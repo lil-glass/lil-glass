@@ -1,27 +1,10 @@
 import { useLoaderData } from "@remix-run/react";
 import electron from "@/electron.server";
-
-import {
-  CalendarIcon,
-  EnvelopeClosedIcon,
-  FaceIcon,
-  GearIcon,
-  HomeIcon,
-  PersonIcon,
-  RocketIcon,
-} from "@radix-ui/react-icons";
-
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from "@/components/ui/command";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
+import { CommandMenu } from "@/components/command-menu";
+import { HomeIcon } from "@radix-ui/react-icons";
+import { useCallback, useEffect, useRef, useState } from "react";
+// import { ipcRenderer } from "electron";
 
 export function loader() {
   return {
@@ -31,71 +14,75 @@ export function loader() {
 
 export default function Index() {
   const data = useLoaderData<typeof loader>();
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("https://lil.media");
+  const webviewRef = useRef<null | HTMLWebViewElement>(null);
+
+  const down = (e: KeyboardEvent) => {
+    if (e.key === "l" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      setOpen((open) => !open);
+    }
+  };
+
+  useEffect(() => {
+    // ipcRenderer.on("open-menu", () => {
+    //   setOpen((open) => !open);
+    // });
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
+  const remoteOpen = useCallback(
+    (event) => {
+      console.log({ event });
+      console.log(open);
+      setOpen((open) => !open);
+    },
+    [setOpen]
+  );
+  useEffect(() => {
+    if (window.electron) {
+      window.electron.test(remoteOpen);
+    }
+  }, [setOpen]);
+
+  useEffect(() => {
+    if (webviewRef.current) {
+      console.dir(webviewRef.current);
+    }
+  }, [webviewRef]);
+
   return (
-    <main className="h-screen flex bg-white">
-      <aside className="bg-cyan-300 w-10 py-3 flex justify-center app-drag-handle">
+    <main className="h-screen flex">
+      {/* <aside className="bg-cyan-300 w-10 py-3 flex justify-centder app-drag-handle">
         <HomeIcon />
-      </aside>
+      </aside> */}
       <div className="flex-1">
         <PanelGroup direction="horizontal">
-          <Panel>
+          <Panel className="relative">
+            <div
+              tabIndex={0}
+              className="absolute bottom-4 left-4 right-4 z-10 rounded-md app-drag-handle"
+            >
+              <CommandMenu open={open} setOpen={setOpen} changeUrl={setUrl} />
+            </div>
             <webview
-              src="https://github.com"
+              autoFocus
+              ref={webviewRef}
+              src={url}
               className="w-full h-full shadow-inner"
+              useragent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
             ></webview>
           </Panel>
-          <PanelResizeHandle className="bg-cyan-300 w-1" />
-          <Panel defaultSizePercentage={30} minSizePercentage={20}>
+          {/* <PanelResizeHandle className="bg-cyan-300 w-1" />
+          <Panel>
             <webview
               src="https://electronjs.org"
               className="w-full h-full"
             ></webview>
-          </Panel>
+          </Panel> */}
         </PanelGroup>
       </div>
     </main>
-  );
-}
-
-export function CommandMenu() {
-  return (
-    <Command className="rounded-lg border shadow-md" loop>
-      <CommandInput placeholder="Type a command or search..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Suggestions">
-          <CommandItem>
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            <span>Calendar</span>
-          </CommandItem>
-          <CommandItem>
-            <FaceIcon className="mr-2 h-4 w-4" />
-            <span>Search Emoji</span>
-          </CommandItem>
-          <CommandItem>
-            <RocketIcon className="mr-2 h-4 w-4" />
-            <span>Launch</span>
-          </CommandItem>
-        </CommandGroup>
-        <CommandSeparator />
-        <CommandGroup heading="Settings">
-          <CommandItem>
-            <PersonIcon className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-            <CommandShortcut>⌘P</CommandShortcut>
-          </CommandItem>
-          <CommandItem>
-            <EnvelopeClosedIcon className="mr-2 h-4 w-4" />
-            <span>Mail</span>
-            <CommandShortcut>⌘B</CommandShortcut>
-          </CommandItem>
-          <CommandItem>
-            <GearIcon className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-            <CommandShortcut>⌘S</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </Command>
   );
 }
